@@ -1,4 +1,4 @@
-package org.example;
+package org.pokedex.model;
 
 import java.util.List;
 

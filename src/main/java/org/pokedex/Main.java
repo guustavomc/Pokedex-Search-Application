@@ -1,5 +1,5 @@
 // Project made using JSON from https://github.com/Purukitto/pokemon-data.json/tree/master
-package org.example;
+package org.pokedex;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
