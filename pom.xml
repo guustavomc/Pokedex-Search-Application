@@ -53,7 +53,7 @@
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>org.pokedex.Main</mainClass> <!-- Update with actual main class -->
+                            <mainClass>org.pokedex.PokedexSearchApplication</mainClass> <!-- Update with actual main class -->
                         </manifest>
                     </archive>
                 </configuration>
@@ -71,7 +71,7 @@
                     </descriptorRefs>
                     <archive>
                         <manifest>
-                            <mainClass>org.pokedex.Main</mainClass> <!-- Update if needed -->
+                            <mainClass>org.pokedex.PokedexSearchApplication</mainClass> <!-- Update if needed -->
                         </manifest>
                     </archive>
                 </configuration>
