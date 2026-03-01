@@ -26,21 +26,25 @@ public class ReadPokemonService {
             ClassPathResource resource = new ClassPathResource("pokedex.json");
             JsonNode rootNode = objectMapper.readTree(resource.getInputStream());
 
-            for(JsonNode pokemonNode:rootNode){
-                int id = pokemonNode.get("id").asInt();
-                String name = pokemonNode.get("name").get("english").asText();
-                ArrayList<String> types = new ArrayList<>();
-                for(JsonNode typeNode: pokemonNode.get("type")){
-                    types.add(typeNode.asText());
-                }
-                String description = pokemonNode.get("description").asText();
-                listPokemon.add(new Pokemon(id,name,types,description));
-            }
+            extractPokemonList(rootNode);
         } catch (IOException e) {
             e.printStackTrace();
         }
 
         return listPokemon;
+    }
+
+    private void extractPokemonList(JsonNode rootNode) {
+        for(JsonNode pokemonNode: rootNode){
+            int id = pokemonNode.get("id").asInt();
+            String name = pokemonNode.get("name").get("english").asText();
+            ArrayList<String> types = new ArrayList<>();
+            for(JsonNode typeNode: pokemonNode.get("type")){
+                types.add(typeNode.asText());
+            }
+            String description = pokemonNode.get("description").asText();
+            listPokemon.add(new Pokemon(id,name,types,description));
+        }
     }
 
     public List<Pokemon> findAllPokemon(){
