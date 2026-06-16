@@ -1,11 +1,14 @@
 package org.pokedex.controller;
 
 import org.junit.jupiter.api.Test;
+import org.pokedex.exception.GlobalExceptionHandler;
 import org.pokedex.model.Pokemon;
 import org.pokedex.service.ReadPokemonService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.FilterType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.Arrays;
@@ -17,7 +20,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@WebMvcTest(PokedexController.class)
+@WebMvcTest(controllers = PokedexController.class, includeFilters = @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = GlobalExceptionHandler.class))
 public class PokedexControllerTest {
 
     @Autowired
@@ -58,10 +61,10 @@ public class PokedexControllerTest {
         when(service.findAllPokemon()).thenReturn(List.of(bulbasaur));
         when(service.findPokemonByID(anyList(), eq(999))).thenReturn(null);
 
-        // current behavior: returns HTTP 200 with empty body instead of 404
         mockMvc.perform(get("/api/pokemon/id/999"))
-                .andExpect(status().isOk())
-                .andExpect(content().string(""));
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.message").value("No Pokemon found with id: 999"));
     }
 
     @Test
@@ -80,10 +83,10 @@ public class PokedexControllerTest {
         when(service.findAllPokemon()).thenReturn(List.of(bulbasaur));
         when(service.findPokemonByName(anyList(), eq("Unknown"))).thenReturn(null);
 
-        // current behavior: returns HTTP 200 with empty body instead of 404
         mockMvc.perform(get("/api/pokemon/search/Unknown"))
-                .andExpect(status().isOk())
-                .andExpect(content().string(""));
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.message").value("No Pokemon found with name: Unknown"));
     }
 
     @Test
