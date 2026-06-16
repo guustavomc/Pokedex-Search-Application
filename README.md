@@ -127,49 +127,11 @@ The application is built using Maven to create an executable JAR file.
    Invoke-WebRequest -Uri http://localhost:8080/api/pokemon
    ```
 
-## Step 2: Containerize the Application with Docker
-
-The application is packaged into a Docker container for deployment.
-
-1. **Build the Docker Image**:
-
-   ```bash
-   docker build -t pokedex-api .
-   ```
-
-    - This creates a Docker image named `pokedex-api` based on the `Dockerfile`.
-    - The `Dockerfile` uses a multi-stage build: Maven builds the JAR, and an Alpine JRE runs it.
-
-2. **Test the Docker Container**:
-
-   ```bash
-   docker run -p 8080:8080 pokedex-api
-   ```
-
-    - Maps port `8080` on the host to `8080` in the container.
-    - Test the API at `http://localhost:8080/api/pokemon`.
-
-3. **Push the Image to Docker Hub**: To make the image available to Kubernetes, push it to Docker Hub:
-
-   ```bash
-   # Log in to Docker Hub (create an account at https://hub.docker.com if needed)
-   docker login
-   
-   # Tag the image with your Docker Hub username
-   docker tag pokedex-api <your-dockerhub-username>/pokedex-api:latest
-   
-   # Push the image to Docker Hub
-   docker push <your-dockerhub-username>/pokedex-api:latest
-   ```
-
-    - Replace `<your-dockerhub-username>` with your Docker Hub username.
-    - This makes the image accessible to Kubernetes clusters, including Kind.
-
-## Step 3: Deploy to Kubernetes with Kind
+## Step 2: Deploy to Kubernetes with Kind
 
 We use **Kind** to run a local Kubernetes cluster and deploy the API using Kubernetes manifests.
 
-### 3.1 Set Up a Kind Cluster
+### 2.1 Set Up a Kind Cluster
 
 1. **Create a Kind Cluster**:
 
@@ -187,17 +149,19 @@ We use **Kind** to run a local Kubernetes cluster and deploy the API using Kuber
 
     - Ensures `kubectl` is connected to the Kind cluster.
 
-### 3.2 Load the Docker Image into Kind (Optional)
+### 2.2 Build and Load the Docker Image into Kind
 
-If you prefer not to use Docker Hub, you can load the local `pokedex-api` image into Kind:
+Build the Docker image locally and load it into the Kind cluster:
 
 ```bash
+docker build -t pokedex-api .
 kind load docker-image pokedex-api:latest --name pokedex
 ```
 
-- This makes the image available to the Kind cluster without needing a registry. Skip this step if you pushed the image to Docker Hub.
+- This makes the image available to the Kind cluster without needing a registry or Docker Hub account.
+- The deployment uses `imagePullPolicy: Never`, so Kubernetes will only use the locally loaded image.
 
-### 3.3 Deploy Kubernetes Resources
+### 2.3 Deploy Kubernetes Resources
 
 The application is deployed using a `Deployment` and exposed via a `Service`. Optionally, an `Ingress` can be used for HTTP access.
 
@@ -223,7 +187,8 @@ The application is deployed using a `Deployment` and exposed via a `Service`. Op
        spec:
          containers:
          - name: pokedex-api
-           image: <your-dockerhub-username>/pokedex-api:latest
+           image: pokedex-api:latest
+           imagePullPolicy: Never
            ports:
            - containerPort: 8080
            resources:
@@ -247,7 +212,7 @@ The application is deployed using a `Deployment` and exposed via a `Service`. Op
              periodSeconds: 5
    ```
 
-    - **Important**: Replace `<your-dockerhub-username>` with your Docker Hub username in the `image` field. If you used the local image with `kind load docker-image`, use `image: pokedex-api:latest` instead.
+    - `imagePullPolicy: Never` tells Kubernetes to use the locally loaded image (via `kind load docker-image`) instead of pulling from a registry.
 
 2. **Create the Service Manifest** (`pokedex-service.yaml`):
 
@@ -271,8 +236,8 @@ The application is deployed using a `Deployment` and exposed via a `Service`. Op
 3. **Apply the Manifests**:
 
    ```bash
-   kubectl apply -f pokedex-deployment.yaml
-   kubectl apply -f pokedex-service.yaml
+   kubectl apply -f k8s/pokedex-deployment.yaml
+   kubectl apply -f k8s/pokedex-service.yaml
    ```
 
 4. **Verify the Deployment**:
@@ -286,7 +251,7 @@ The application is deployed using a `Deployment` and exposed via a `Service`. Op
     - Ensure the `pokedex-api` Deployment has 2/2 pods ready.
     - Check that `pokedex-api-service` is running with `type: NodePort`.
 
-### 3.4 Access the API
+### 2.4 Access the API
 
 The `NodePort` Service exposes the API on a high port (e.g., `30080`).
 
@@ -314,103 +279,7 @@ The `NodePort` Service exposes the API on a high port (e.g., `30080`).
 
     - Replace `<INTERNAL-IP>` with the node’s IP.
 
-3. **Port Forwarding** (Alternative):
 
-   ```bash
-   kubectl port-forward service/pokedex-api-service 8080:80
-   ```
-
-    - Access the API at `http://localhost:8080/api/pokemon`.
-
-### 3.5 Optional: Set Up Ingress
-
-For HTTP access with a domain (e.g., `pokedex.local`), use an Ingress.
-
-1. **Enable the Ingress Controller in Kind**: Create a Kind cluster with Ingress support by using a config file (`kind-config.yaml`):
-
-   ```yaml
-   kind: Cluster
-   apiVersion: kind.x-k8s.io/v1alpha4
-   nodes:
-   - role: control-plane
-     kubeadmConfigPatches:
-     - |
-       kind: InitConfiguration
-       nodeRegistration:
-         kubeletExtraArgs:
-           node-labels: "ingress-ready=true"
-     extraPortMappings:
-     - containerPort: 80
-       hostPort: 80
-       protocol: TCP
-     - containerPort: 443
-       hostPort: 443
-       protocol: TCP
-   ```
-
-   Create the cluster:
-
-   ```bash
-   kind create cluster --name pokedex --config kind-config.yaml
-   ```
-
-2. **Install NGINX Ingress Controller**:
-
-   ```bash
-   kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml
-   ```
-
-3. **Create the Ingress Manifest** (`pokedex-ingress.yaml`):
-
-   ```yaml
-   apiVersion: networking.k8s.io/v1
-   kind: Ingress
-   metadata:
-     name: pokedex-api-ingress
-     namespace: default
-     annotations:
-       nginx.ingress.kubernetes.io/rewrite-target: /
-   spec:
-     rules:
-     - host: pokedex.local
-       http:
-         paths:
-         - path: /
-           pathType: Prefix
-           backend:
-             service:
-               name: pokedex-api-service
-               port:
-                 number: 80
-   ```
-
-4. **Apply the Ingress**:
-
-   ```bash
-   kubectl apply -f pokedex-ingress.yaml
-   ```
-
-5. **Update Hosts File**:
-    - **Windows**: Edit `C:\Windows\System32\drivers\etc\hosts` (requires admin privileges):
-      ```powershell
-      Add-Content -Path "C:\Windows\System32\drivers\etc\hosts" -Value "127.0.0.1 pokedex.local" -Force
-      ```
-        - Run PowerShell as Administrator.
-    - **macOS/Linux**:
-      ```bash
-      echo "127.0.0.1 pokedex.local" | sudo tee -a /etc/hosts
-      ```
-
-6. **Test the Ingress**:
-
-   ```bash
-   curl http://pokedex.local/api/pokemon
-   ```
-
-   **Windows Alternative** (PowerShell):
-   ```powershell
-   Invoke-WebRequest -Uri http://pokedex.local/api/pokemon
-   ```
 
 ## Troubleshooting
 
@@ -453,9 +322,8 @@ For HTTP access with a domain (e.g., `pokedex.local`), use an Ingress.
 To remove the Kubernetes resources:
 
 ```bash
-kubectl delete -f pokedex-deployment.yaml
-kubectl delete -f pokedex-service.yaml
-kubectl delete -f pokedex-ingress.yaml
+kubectl delete -f k8s/pokedex-deployment.yaml
+kubectl delete -f k8s/pokedex-service.yaml
 ```
 
 To delete the Kind cluster:
@@ -504,13 +372,13 @@ If you shut down your PC and want to restart the `pokedex-api` cluster, follow t
    kubectl get services
    ```
 
-    - If resources are missing, reapply manifests:
+  - If resources are missing, reload the image and reapply manifests:
 
-      ```bash
-      kubectl apply -f pokedex-deployment.yaml
-      kubectl apply -f pokedex-service.yaml
-      kubectl apply -f pokedex-ingress.yaml
-      ```
+    ```bash
+    kind load docker-image pokedex-api:latest --name pokedex
+    kubectl apply -f k8s/pokedex-deployment.yaml
+    kubectl apply -f k8s/pokedex-service.yaml
+    ```
 
 4. **Test the API**:
 
@@ -544,26 +412,24 @@ If you change the application code (e.g., update `PokedexController.java` or `po
 
     - This rebuilds the JAR file at `target/Pokedex-Search-Application-1.0-SNAPSHOT.jar`.
 
-2. **Rebuild and Push the Docker Image**:
+2. **Rebuild the Docker Image and Load into Kind**:
 
    ```bash
    docker build -t pokedex-api .
-   docker tag pokedex-api <your-dockerhub-username>/pokedex-api:latest
-   docker push <your-dockerhub-username>/pokedex-api:latest
+   kind load docker-image pokedex-api:latest --name pokedex
    ```
 
-    - Replace `<your-dockerhub-username>` with your Docker Hub username.
-    - This updates the image in Docker Hub for Kubernetes to pull.
+    - This rebuilds the local image and loads it into the Kind cluster.
 
-3. **Update the Deployment to Pull the New Image**:
+3. **Restart the Pods to Pick Up the New Image**:
 
    ```bash
-   kubectl apply -f pokedex-deployment.yaml
+   kubectl apply -f k8s/pokedex-deployment.yaml
    kubectl delete pod -l app=pokedex-api
    ```
 
     - `kubectl apply` ensures the Deployment uses the latest configuration.
-    - `kubectl delete pod` forces Kubernetes to recreate the pods, pulling the updated image.
+    - `kubectl delete pod` forces Kubernetes to recreate the pods using the newly loaded image.
 ...
 ## Learning Resources
 
