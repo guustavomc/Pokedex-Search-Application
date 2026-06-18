@@ -7,7 +7,9 @@ import org.pokedex.model.Pokemon;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -26,10 +28,27 @@ public class ReadPokemonServiceTest {
                 new Pokemon(25, "Pikachu", Arrays.asList("Electric"), "When several gather, lightning storms occur.")
         );
 
-        // Inject test data without triggering @PostConstruct JSON loading
-        Field field = ReadPokemonService.class.getDeclaredField("listPokemon");
+        Map<Integer, Pokemon> byId = new HashMap<>();
+        Map<String, Pokemon> byName = new HashMap<>();
+        Map<String, List<Pokemon>> byType = new HashMap<>();
+        for (Pokemon p : testPokedex) {
+            byId.put(p.getId(), p);
+            byName.put(p.getName().toLowerCase(), p);
+            for (String t : p.getType()) {
+                byType.computeIfAbsent(t.trim().toLowerCase(), k -> new ArrayList<>()).add(p);
+            }
+        }
+
+        setField("listPokemon", new ArrayList<>(testPokedex));
+        setField("pokemonById", byId);
+        setField("pokemonByName", byName);
+        setField("pokemonByType", byType);
+    }
+
+    private void setField(String fieldName, Object value) throws NoSuchFieldException, IllegalAccessException {
+        Field field = ReadPokemonService.class.getDeclaredField(fieldName);
         field.setAccessible(true);
-        field.set(service, new ArrayList<>(testPokedex));
+        field.set(service, value);
     }
 
     @Test
@@ -39,33 +58,33 @@ public class ReadPokemonServiceTest {
 
     @Test
     void findPokemonByID_whenFound_returnsPokemon() {
-        Pokemon result = service.findPokemonByID(testPokedex, 4);
+        Pokemon result = service.findPokemonByID(4);
         assertThat(result).isNotNull();
         assertThat(result.getName()).isEqualTo("Charmander");
     }
 
     @Test
     void findPokemonByID_whenNotFound_returnsNull() {
-        assertThat(service.findPokemonByID(testPokedex, 999)).isNull();
+        assertThat(service.findPokemonByID(999)).isNull();
     }
 
     @Test
     void findPokemonByName_whenFound_returnsPokemon() {
-        Pokemon result = service.findPokemonByName(testPokedex, "Pikachu");
+        Pokemon result = service.findPokemonByName("Pikachu");
         assertThat(result).isNotNull();
         assertThat(result.getId()).isEqualTo(25);
     }
 
     @Test
     void findPokemonByName_isCaseInsensitive() {
-        Pokemon result = service.findPokemonByName(testPokedex, "pikachu");
+        Pokemon result = service.findPokemonByName("pikachu");
         assertThat(result).isNotNull();
         assertThat(result.getName()).isEqualTo("Pikachu");
     }
 
     @Test
     void findPokemonByName_whenNotFound_returnsNull() {
-        assertThat(service.findPokemonByName(testPokedex, "Mewtwo")).isNull();
+        assertThat(service.findPokemonByName("Mewtwo")).isNull();
     }
 
     @Test

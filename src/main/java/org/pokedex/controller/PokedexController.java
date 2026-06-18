@@ -30,14 +30,14 @@ public class PokedexController {
 
     @GetMapping("/id/{id}")
     public Pokemon getPokemonByID(@PathVariable("id") int id){
-        Pokemon pokemon = service.findPokemonByID(service.findAllPokemon(), id);
+        Pokemon pokemon = service.findPokemonByID(id);
         if (pokemon == null) throw new PokemonNotFoundException("No Pokemon found with id: " + id);
         return pokemon;
     }
 
     @GetMapping("/search/{search}")
     public Pokemon getPokemonByName(@PathVariable("search") String name){
-        Pokemon pokemon = service.findPokemonByName(service.findAllPokemon(), name);
+        Pokemon pokemon = service.findPokemonByName(name);
         if (pokemon == null) throw new PokemonNotFoundException("No Pokemon found with name: " + name);
         return pokemon;
     }
