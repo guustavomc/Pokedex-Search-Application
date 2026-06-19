@@ -17,7 +17,8 @@ spec:
     spec:
       containers:
         - name: pokedex-api
-          image: guustavomccb/pokedex-api:latest
+          image: pokedex-api:latest
+          imagePullPolicy: Never
           ports:
             - containerPort: 8080
           resources:
