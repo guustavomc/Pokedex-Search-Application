@@ -66,24 +66,35 @@ brew install kubectl
 Pokedex-Search-Application/
 ├── src/
 │   ├── main/
-│   │   ├── java/org/example/
-│   │   │   ├── Main.java
-│   │   │   ├── ReadPokemonService.java
-│   │   │   ├── PokedexController.java
-│   │   │   ├── Pokemon.java
+│   │   ├── java/org/pokedex/
+│   │   │   ├── PokedexSearchApplication.java
+│   │   │   ├── controller/
+│   │   │   │   ├── PokedexController.java
+│   │   │   ├── exception/
+│   │   │   │   ├── GlobalExceptionHandler.java
+│   │   │   │   ├── PokemonNotFoundException.java
+│   │   │   ├── model/
+│   │   │   │   ├── Pokemon.java
+│   │   │   ├── service/
+│   │   │   │   ├── ReadPokemonService.java
 │   │   ├── resources/
 │   │   │   ├── pokedex.json
+│   ├── test/
+│   │   ├── java/org/pokedex/
+│   │   │   ├── controller/PokedexControllerTest.java
+│   │   │   ├── model/PokemonTest.java
+│   │   │   ├── service/ReadPokemonServiceTest.java
+├── k8s/
+│   ├── pokedex-deployment.yaml
+│   ├── pokedex-service.yaml
 ├── pom.xml
 ├── Dockerfile
-├── pokedex-deployment.yaml
-├── pokedex-service.yaml
-├── pokedex-ingress.yaml
 ├── README.md
 ```
 
 - `pokedex.json`: Contains Pokémon data (sourced from Purukitto/pokemon-data.json).
 - `Dockerfile`: Defines the Docker image build process.
-- Kubernetes manifests (`pokedex-deployment.yaml`, `pokedex-service.yaml`): Define the Kubernetes resources.
+- Kubernetes manifests (`k8s/pokedex-deployment.yaml`, `k8s/pokedex-service.yaml`): Define the Kubernetes resources.
 
 ## Step 1: Build the JAR
 
@@ -96,7 +107,7 @@ The application is built using Maven to create an executable JAR file.
    ```
 
     - This compiles the code, runs the build, and generates `target/Pokedex-Search-Application-1.0-SNAPSHOT.jar`.
-    - The `-DskipTests` flag skips tests for faster builds (ensure tests pass if you have them).
+    - The `-DskipTests` flag skips tests for faster builds. The project includes a JUnit test suite (controller, service, and model) under `src/test/java`; run `mvn test` to execute it.
 
 2. **Run the Application Locally** (Optional):
 
@@ -121,6 +132,8 @@ The application is built using Maven to create an executable JAR file.
    # Get Pokémon of type "Grass"
    curl http://localhost:8080/api/pokemon/type/Grass
    ```
+
+   - If an ID or name doesn't match any Pokémon, the API returns `404 Not Found` with a JSON error body (`status`, `error`, `message`, `timestamp`).
 
    **Windows Alternative** (PowerShell):
    ```powershell
